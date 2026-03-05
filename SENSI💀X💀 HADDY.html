@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sensi Viewer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+  <style>
+    body { background-color: #111827; font-family: 'Poppins', sans-serif; }
+    .card { background-color: #1f2937; border: 1px solid #374151; transition: 0.3s; }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+  </style>
+</head>
+<body class="text-white p-4">
+  <!-- Header -->
+  <div class="relative text-center mb-4">
+    <h1 class="text-3xl font-bold text-white"><i class="fa-solid fa-crosshairs text-red-500"></i> Sensi Viewer</h1>
+    <p class="text-gray-400">See all uploaded Free Fire sensitivities</p>
+    <div class="absolute top-0 right-0">
+      <button id="menu-btn" class="text-white text-2xl p-2"><i class="fas fa-bars"></i></button>
+    </div>
+  </div>
+
+  <!-- Dropdown -->
+  <div id="menu-dropdown" class="hidden absolute right-4 top-16 bg-gray-800 rounded-lg shadow-lg z-50 w-52 text-left border border-gray-700">
+    <button id="request-btn" class="block w-full text-left px-4 py-2 text-white hover:bg-gray-700">📩 Request Sensi</button>
+    <a href="https://youtube.com/@x7n_rock" target="_blank" class="block px-4 py-2 text-white hover:bg-gray-700">▶️ YouTube</a>
+    <a href="https://www.instagram.com/rock_here_live?igsh=MWVibWpsaGY4azMybA==" target="_blank" class="block px-4 py-2 text-white hover:bg-gray-700">📸 Instagram</a>
+  </div>
+
+  <!-- Request Modal -->
+  <div id="request-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+    <div class="bg-gray-900 p-6 rounded-lg max-w-md w-full">
+      <h2 class="text-xl font-bold mb-4">📩 Request Custom Sensi</h2>
+      <form id="request-form" class="space-y-3">
+        <input type="text" id="req-name" required placeholder="Your Name" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-600 text-white">
+        <input type="text" id="req-device" required placeholder="Your Device Name" class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-600 text-white">
+        <textarea id="req-message" required placeholder="Write your request..." class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-600 text-white"></textarea>
+        <div class="flex justify-end space-x-2">
+          <button type="button" id="close-modal" class="px-4 py-2 bg-gray-700 rounded">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-red-600 rounded text-white">Send Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="max-w-3xl mx-auto grid grid-cols-1 mb-6">
+    <input id="search-input" type="text" placeholder="Search by name/device..." class="w-full px-4 py-2 bg-gray-800 rounded-lg border border-gray-600">
+  </div>
+
+  <!-- Sensi Cards -->
+  <div class="max-w-5xl mx-auto">
+    <div id="sensi-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div id="loading-state" class="col-span-full text-center py-10">
+        <i class="fas fa-spinner fa-spin fa-2x text-red-500"></i>
+        <p>Loading Sensitivities...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script>
+    const firebaseConfig = {
+  apiKey: "AIzaSyBrLuwYaY2VuSKK60U6Z3SKEmYQ0sUse6U",
+            authDomain: "sensiapp-89a2d.firebaseapp.com",
+            projectId: "sensiapp-89a2d",
+            storageBucket: "sensiapp-89a2d.firebasestorage.app",
+            messagingSenderId: "552243941644",
+            appId: "1:552243941644:web:9d53219cfcc44129873929"
+    };
+
+    if (firebaseConfig.projectId !== "YOUR_PROJECT_ID") {
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+
+      const sensiList = document.getElementById('sensi-list');
+      const loadingState = document.getElementById('loading-state');
+      const searchInput = document.getElementById('search-input');
+      let allData = [];
+
+      db.collection('sensitivities').orderBy('name').onSnapshot(snapshot => {
+        allData = snapshot.docs.map(doc => doc.data());
+        render(allData);
+        loadingState.classList.add('hidden');
+      });
+
+      function render(data) {
+        sensiList.innerHTML = '';
+        data.forEach(s => {
+          sensiList.innerHTML += `
+            <div class="card p-5 rounded-xl">
+              <div class="flex items-center space-x-4 mb-4">
+                <img src="${s.logoUrl}" class="w-14 h-14 rounded-full object-cover border-2 border-gray-600">
+                <div>
+                  <h3 class="text-lg font-bold">${s.name}</h3>
+                  <p class="text-sm text-gray-400"><i class="fa-solid fa-mobile-screen-button mr-1"></i>${s.deviceName} | DPI: ${s.dpi}</p>
+                </div>
+              </div>
+              ${renderBar("General", s.general)}
+              ${renderBar("Red Dot", s.redDot)}
+              ${renderBar("2x Scope", s.scope2x)}
+              ${renderBar("4x Scope", s.scope4x)}
+              ${renderBar("Sniper Scope", s.sniperScope)}
+              ${renderBar("Free Look", s.freeLook)}
+            </div>`;
+        });
+      }
+
+      function renderBar(label, val) {
+        const capped = Math.min(200, parseInt(val) || 0);
+        const percent = Math.round((capped / 200) * 100); // convert to 0-100% width
+        return `
+          <div class="mb-2">
+            <label class="flex justify-between text-sm text-gray-300">${label}<span class="text-red-400">${capped}</span></label>
+            <div class="w-full h-2 rounded-full bg-gray-700 overflow-hidden">
+              <div class="h-2 bg-red-500 rounded-full transition-all duration-300" style="width:${percent}%"></div>
+            </div>
+          </div>`;
+      }
+
+      searchInput.addEventListener('input', () => {
+        const q = searchInput.value.toLowerCase();
+        const filtered = allData.filter(s => s.name.toLowerCase().includes(q) || s.deviceName.toLowerCase().includes(q));
+        render(filtered);
+      });
+
+      document.getElementById('menu-btn').addEventListener('click', () => {
+        document.getElementById('menu-dropdown').classList.toggle('hidden');
+      });
+
+      document.getElementById('request-btn').addEventListener('click', () => {
+        document.getElementById('menu-dropdown').classList.add('hidden');
+        document.getElementById('request-modal').classList.remove('hidden');
+      });
+
+      document.getElementById('close-modal').addEventListener('click', () => {
+        document.getElementById('request-modal').classList.add('hidden');
+      });
+
+      document.getElementById('request-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('req-name').value;
+        const device = document.getElementById('req-device').value;
+        const message = document.getElementById('req-message').value;
+        try {
+          await db.collection("requests").add({ name, device, message, time: firebase.firestore.FieldValue.serverTimestamp() });
+          alert("✅ Request sent successfully!");
+          document.getElementById('request-form').reset();
+          document.getElementById('request-modal').classList.add('hidden');
+        } catch (err) {
+          alert("❌ Failed to send request.");
+          console.error(err);
+        }
+      });
+    } else {
+      alert("⚠️ Please add your Firebase config first.");
+    }
+  </script>
+</body>
+</html>
